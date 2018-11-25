@@ -5,7 +5,6 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Time
 import Random
-import Json.Decode as Decode
 import Grid exposing (..)
 import Util exposing (..)
 import NonEmptyList as NEL exposing (NonEmptyList)
@@ -14,7 +13,7 @@ import Html.Events.Extra.Pointer as Pointer
 main = Browser.element { init = init, update = update, view = view, subscriptions = subscriptions }
 
 -- CONSTANTS
-gridSize = Size 30 20
+gridSize = Size 40 20
 cellSize = Size 20 20
 tickFrequency = 100
 initialSnakeLength = 20
@@ -49,17 +48,12 @@ init : () -> (Model, Cmd Msg)
 init _ = initGame Inactive
 
 -- UPDATE
-type Msg = Tick Time.Posix | Point Direction | OtherKey | PlacePrize (Maybe Position) | PointerDownAt ( Float, Float )
+type Msg = Tick Time.Posix | PlacePrize (Maybe Position) | PointerDownAt ( Float, Float )
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   if (model.state == Active) then
     case msg of
-      Point dir ->
-        ( { model | direction = dir }
-        , Cmd.none
-        )
-
       PointerDownAt offsetPos ->
         ( { model | direction = pointerOffsetToDirection offsetPos model.direction model.snake.head }
         , Cmd.none
@@ -84,12 +78,8 @@ update msg model =
       PlacePrize  pos ->
         ( { model | prize = pos }, Cmd.none )
 
-      OtherKey ->
-        ( model, Cmd.none )
-
     else
       case msg of 
-        OtherKey -> initGame Active
         PointerDownAt _ -> initGame Active
         _ -> ( model, Cmd.none )
 
@@ -119,36 +109,22 @@ pointerOffsetToDirection eventOffset currentDirection snakeHead =
 
 -- SUBSCRIPTIONS
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  Sub.batch
-    [ Time.every tickFrequency Tick
-    , Browser.Events.onKeyPress keyDecoder
-    ]
-
-keyDecoder : Decode.Decoder Msg
-keyDecoder = Decode.map keyToMsg (Decode.field "key" Decode.string)
-
-keyToMsg : String -> Msg
-keyToMsg string =
-  case string of
-    "ArrowLeft" -> Point Left
-    "ArrowRight" -> Point Right
-    "ArrowUp" -> Point Up
-    "ArrowDown" -> Point Down
-    _ -> OtherKey
+subscriptions model = Time.every tickFrequency Tick
 
 -- VIEW
 view : Model -> Html Msg
 view model =
-  svg [ width (String.fromInt (gridSize.width * cellSize.width))
-      , height (String.fromInt (gridSize.height * cellSize.height))
+  svg [ width "100%"
+      , height "auto"
+      , viewBox ("0 0 " ++ String.fromInt (gridSize.width * cellSize.width) ++ " " ++ String.fromInt (gridSize.height * cellSize.height))
       , Pointer.onDown (\event -> PointerDownAt event.pointer.offsetPos)
+      , Svg.Attributes.style "touch-action: none"
       ]
       (  rect [ width (String.fromInt (gridSize.width * cellSize.width)), height (String.fromInt (gridSize.height * cellSize.height))] []
       :: (maybeToList model.prize |> List.map (\pos -> renderCircle "green" pos))
       ++ List.map (renderCircle "red") model.snake.tail
       ++ [ renderCircle "purple" model.snake.head ]
-      ++ if (model.state == Inactive) then [ text_ [ x "50%", y "50%", Svg.Attributes.style "dominant-baseline:middle; text-anchor:middle; fill: white; font-size: large"] [ text "Click or press any key to begin..." ] ] else []
+      ++ if (model.state == Inactive) then [ text_ [ x "50%", y "50%", Svg.Attributes.style "dominant-baseline:middle; text-anchor:middle; fill: white; font-size: large"] [ text "Click or touch to begin..." ] ] else []
       )
 
 renderCircle : String -> Position -> Html Msg
