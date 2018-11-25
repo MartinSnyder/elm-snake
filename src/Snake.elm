@@ -14,7 +14,7 @@ import Html.Events.Extra.Pointer as Pointer
 main = Browser.element { init = init, update = update, view = view, subscriptions = subscriptions }
 
 -- CONSTANTS
-gridSize = Size 40 20
+gridSize = Size 30 20
 cellSize = Size 20 20
 tickFrequency = 100
 initialSnakeLength = 20
