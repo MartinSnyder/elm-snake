@@ -22,15 +22,17 @@ initialSnakeLength = 20
 type State = Active | Inactive
 
 type alias Model =
-  { state: State
+  { state : State
   , gameTicks : Int
   , direction : Direction
   , snake : NonEmptyList Position
   , prize : (Maybe Position)
+  , score : Int
+  , highScore : Int
   }
 
-initGame : State -> (Model, Cmd Msg)
-initGame initialState =
+initGame : State -> Int -> (Model, Cmd Msg)
+initGame initialState highScore =
   let
     head = computeGridCenter gridSize
     initSnake = NonEmptyList head (List.repeat (initialSnakeLength - 1) head)
@@ -40,12 +42,14 @@ initGame initialState =
     , direction = Up
     , snake = initSnake
     , prize = Nothing
+    , score = 0
+    , highScore = highScore
     }
   , if (initialState == Active) then placePrize initSnake else Cmd.none
   )
 
 init : () -> (Model, Cmd Msg)
-init _ = initGame Inactive
+init _ = initGame Inactive 0
 
 -- UPDATE
 type Msg = Tick Time.Posix | PlacePrize (Maybe Position) | PointerDownAt ( Float, Float )
@@ -63,6 +67,7 @@ update msg model =
         let
           nextHead = adjustPosition model.snake.head model.direction
           atePrize = (Just nextHead) == model.prize
+          nextScore = if atePrize then model.score + 1 else model.score
           nextTail = model.snake.head :: if atePrize then model.snake.tail else stripLast model.snake.tail
           nextSnake = NonEmptyList nextHead nextTail
           nextState = if (isLegalState nextSnake) then Active else Inactive
@@ -70,7 +75,9 @@ update msg model =
             { model
               | state = nextState
               , snake = nextSnake
-              , gameTicks = model.gameTicks + 1
+              , score = nextScore
+              , highScore = Basics.max nextScore model.highScore
+              , gameTicks = if (nextState == Active) then model.gameTicks + 1 else (-1000 // tickFrequency) // 2
             }
         in
           ( nextModel , if atePrize then placePrize nextSnake else Cmd.none )
@@ -80,7 +87,9 @@ update msg model =
 
     else
       case msg of 
-        PointerDownAt _ -> initGame Active
+        PointerDownAt _ -> if (model.gameTicks >= 0) then initGame Active model.highScore else ( model, Cmd.none )
+        Tick time ->
+          ({ model | gameTicks = model.gameTicks + 1}, Cmd.none )
         _ -> ( model, Cmd.none )
 
 isLegalState : NonEmptyList Position -> Bool
@@ -124,7 +133,10 @@ view model =
       :: (maybeToList model.prize |> List.map (\pos -> renderCircle "green" pos))
       ++ List.map (renderCircle "red") model.snake.tail
       ++ [ renderCircle "purple" model.snake.head ]
-      ++ if (model.state == Inactive) then [ text_ [ x "50%", y "50%", Svg.Attributes.style "dominant-baseline:middle; text-anchor:middle; fill: white; font-size: large"] [ text "Click or touch to begin..." ] ] else []
+      ++ [ text_ [ x "5", y "20", Svg.Attributes.style "fill: white"] [ text ("Score: " ++ (String.fromInt model.score))]
+         , text_ [ x (String.fromInt ((gridSize.width * cellSize.width) - 5)), y "20", Svg.Attributes.style "fill: white; text-anchor: end"] [ text ("High Score: " ++ (String.fromInt model.highScore))]
+         ]
+      ++ if (model.state == Inactive && model.gameTicks >= 0) then [ text_ [ x "50%", y "50%", Svg.Attributes.style "dominant-baseline:middle; text-anchor:middle; fill: white; font-size: large"] [ text "Click or touch to begin..." ] ] else []
       )
 
 renderCircle : String -> Position -> Html Msg
