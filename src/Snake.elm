@@ -7,8 +7,11 @@ import Time
 import Random
 import Grid exposing (..)
 import Util exposing (..)
+import Json.Decode as Decode
 import NonEmptyList as NEL exposing (NonEmptyList)
 import Html.Events.Extra.Pointer as Pointer
+import Html.Events exposing (on, keyCode)
+import Browser.Navigation exposing (Key)
 
 main = Browser.element { init = init, update = update, view = view, subscriptions = subscriptions }
 
@@ -52,7 +55,7 @@ init : () -> (Model, Cmd Msg)
 init _ = initGame Inactive 0
 
 -- UPDATE
-type Msg = Tick Time.Posix | PlacePrize (Maybe Position) | PointerDownAt ( Float, Float )
+type Msg = Tick Time.Posix | PlacePrize (Maybe Position) | PointerDownAt ( Float, Float ) | KeyDown Int
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -62,6 +65,22 @@ update msg model =
         ( { model | direction = pointerOffsetToDirection offsetPos model.direction model.snake.head }
         , Cmd.none
         )
+
+      KeyDown key ->
+        case key of
+          37 -> ( { model | direction = Left }
+                , Cmd.none
+                )
+          38 -> ( { model | direction = Up }
+                , Cmd.none
+                )
+          39 -> ( { model | direction = Right }
+                , Cmd.none
+                )
+          40 -> ( { model | direction = Down }
+                , Cmd.none
+                )
+          _ -> (model, Cmd.none)
 
       Tick time ->
         let
@@ -90,6 +109,13 @@ update msg model =
         PointerDownAt _ -> if (model.gameTicks >= 0) then initGame Active model.highScore else ( model, Cmd.none )
         Tick time ->
           ({ model | gameTicks = model.gameTicks + 1}, Cmd.none )
+
+        KeyDown key ->
+          if key == 13 then
+            if (model.gameTicks >= 0) then initGame Active model.highScore else ( model, Cmd.none )
+          else
+            (model, Cmd.none)
+
         _ -> ( model, Cmd.none )
 
 isLegalState : NonEmptyList Position -> Bool
@@ -116,6 +142,10 @@ pointerOffsetToDirection eventOffset currentDirection snakeHead =
   else
     if (dy < 0) then Up else Down
 
+onKeyDown : (Int -> msg) -> Attribute msg
+onKeyDown tagger =
+  on "keydown" (Decode.map tagger keyCode)
+
 -- SUBSCRIPTIONS
 subscriptions : Model -> Sub Msg
 subscriptions model = Time.every tickFrequency Tick
@@ -128,6 +158,7 @@ view model =
       , viewBox ("0 0 " ++ String.fromInt (gridSize.width * cellSize.width) ++ " " ++ String.fromInt (gridSize.height * cellSize.height))
       , Pointer.onDown (\event -> PointerDownAt event.pointer.offsetPos)
       , Svg.Attributes.style "touch-action: none"
+      , onKeyDown KeyDown
       ]
       (  rect [ width (String.fromInt (gridSize.width * cellSize.width)), height (String.fromInt (gridSize.height * cellSize.height))] []
       :: (maybeToList model.prize |> List.map (\pos -> renderCircle "green" pos))
