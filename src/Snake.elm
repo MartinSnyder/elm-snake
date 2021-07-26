@@ -68,18 +68,30 @@ update msg model =
 
       KeyDown key ->
         case key of
-          37 -> ( { model | direction = Left }
-                , Cmd.none
-                )
-          38 -> ( { model | direction = Up }
-                , Cmd.none
-                )
-          39 -> ( { model | direction = Right }
-                , Cmd.none
-                )
-          40 -> ( { model | direction = Down }
-                , Cmd.none
-                )
+          37 -> 
+            if model.direction /= Right then 
+              ( { model | direction = Left }
+              , Cmd.none
+              )
+            else (model, Cmd.none)
+          38 ->
+            if model.direction /= Down then 
+              ( { model | direction = Up }
+              , Cmd.none
+              )
+            else (model, Cmd.none)
+          39 ->
+            if model.direction /= Left then 
+              ( { model | direction = Right }
+              , Cmd.none
+              )
+            else (model, Cmd.none)
+          40 ->
+            if model.direction /= Up then 
+              ( { model | direction = Down }
+              , Cmd.none
+              )
+            else (model, Cmd.none)
           _ -> (model, Cmd.none)
 
       Tick time ->
