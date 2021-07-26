@@ -1,6 +1,6 @@
 import Browser
 import Browser.Events
-import Html exposing (Html)
+import Html exposing (Html, div, input)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Time
@@ -153,12 +153,13 @@ subscriptions model = Time.every tickFrequency Tick
 -- VIEW
 view : Model -> Html Msg
 view model =
-  svg [ width "100%"
+  div []
+  [
+    svg [ width "100%"
       , height "auto"
       , viewBox ("0 0 " ++ String.fromInt (gridSize.width * cellSize.width) ++ " " ++ String.fromInt (gridSize.height * cellSize.height))
       , Pointer.onDown (\event -> PointerDownAt event.pointer.offsetPos)
       , Svg.Attributes.style "touch-action: none"
-      , onKeyDown KeyDown
       ]
       (  rect [ width (String.fromInt (gridSize.width * cellSize.width)), height (String.fromInt (gridSize.height * cellSize.height))] []
       :: (maybeToList model.prize |> List.map (\pos -> renderCircle "green" pos))
@@ -169,6 +170,8 @@ view model =
          ]
       ++ if (model.state == Inactive && model.gameTicks >= 0) then [ text_ [ x "50%", y "50%", Svg.Attributes.style "dominant-baseline:middle; text-anchor:middle; fill: white; font-size: large"] [ text "Click or touch to begin..." ] ] else []
       )
+    , div [] [text ("Enter to start. Arrow keys to control"), input [onKeyDown KeyDown] []]
+  ]
 
 renderCircle : String -> Position -> Html Msg
 renderCircle color pos =
